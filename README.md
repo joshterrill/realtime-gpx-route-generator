@@ -4,6 +4,14 @@ Simple web application that lets you type in a starting location, ending locatio
 
 Just replace `<YOUR API KEY HERE>` with your Google Maps geocode/javascript map API enabled key.
 
+If you don't have a file server to host it on and just want to run it locally:
+
+```bash
+npm i -g http-server
+http-server -c0
+# navigate to http://localhost:8080
+```
+
 # License
 
 MIT
