@@ -1,192 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-time GPX Route Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
     <script src="https://maps.googleapis.com/maps/api/js?key=<YOUR API KEY HERE>&libraries=places"></script>
     <script src="https://cdn.rawgit.com/tyrasd/togpx/master/togpx.js"></script>
 </head>
-
 <body>
+
     <h1>Real-time GPX Route Generator</h1>
     <form id="gpxForm">
         <label for="startLocation">Start Location:</label>
-        <input type="text" id="startLocation" name="startLocation" required><br /><br />
+        <input type="text" id="startLocation" name="startLocation" required />
+
         <label for="endLocation">End Location:</label>
-        <input type="text" id="endLocation" name="endLocation" required><br /><br />
+        <input type="text" id="endLocation" name="endLocation" required />
+
         <label for="time">Time (minutes):</label>
-        <input type="number" id="time" name="time" required><br /><br />
+        <input type="number" id="time" name="time" required />
+
         <label for="steps">Number of Steps:</label>
-        <input type="number" id="steps" name="steps" required><br />
-        <small>(higher number means more smooth traveling path)</small><br /> <br />
-        <button type="submit">Generate GPX</button><br />
+        <input type="number" id="steps" name="steps" required />
+        <small>(higher number means more smooth traveling path)</small>
+
+        <label for="travel-mode">Travel Mode</label>
+        <select id="travel-mode">
+            <option value="DRIVING">Driving</option>
+            <option value="WALKING">Walking</option>
+            <option value="BICYCLING">Bicycling</option>
+        </select>
+
+        <button type="submit">Generate GPX</button>
     </form>
 
     <a id="downloadLink" download="route.gpx" style="display:none">Download GPX File</a>
 
-    <div id="map" style="width: 100%; height: 500px; margin-top: 20px;"></div>
+    <div id="map"></div>
 
-    <script>
-        let map;
+    <footer>
+        <p>Made with <span class="heart">❤️</span> by <a href="https://joshterrill.com" target="_blank">Josh Terrill</a></p>
+    </footer>
+    <script src="/scripts.js"></script>
 
-        document.getElementById('gpxForm').addEventListener('submit', (event) => {
-            event.preventDefault();
-
-            const startLocation = document.getElementById('startLocation').value;
-            const endLocation = document.getElementById('endLocation').value;
-            const time = document.getElementById('time').value;
-            const steps = document.getElementById('steps').value;
-
-            generateGPX(startLocation, endLocation, time, steps);
-        });
-
-        async function generateGPX(start, end, time, steps) {
-            const directionsService = new google.maps.DirectionsService();
-
-            try {
-                const startCoords = await geocodeAddress(start);
-                const endCoords = await geocodeAddress(end);
-
-                initializeMap(startCoords, endCoords);
-
-                const route = await getRoute(startCoords, endCoords);
-
-                const gpxData = createGPX(route, time, steps);
-
-                downloadGPX(gpxData);
-                displayRouteOnMap(route);
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-
-        function geocodeAddress(address) {
-            return new Promise((resolve, reject) => {
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ address: address }, (results, status) => {
-                    if (status === 'OK') {
-                        resolve(results[0].geometry.location);
-                    } else {
-                        reject('Geocode was not successful for the following reason: ' + status);
-                    }
-                });
-            });
-        }
-
-        function getRoute(start, end) {
-            return new Promise((resolve, reject) => {
-                const directionsService = new google.maps.DirectionsService();
-                directionsService.route({
-                    origin: start,
-                    destination: end,
-                    travelMode: google.maps.TravelMode.WALKING,
-                },
-                (response, status) => {
-                    if (status === google.maps.DirectionsStatus.OK) {
-                        resolve(response.routes[0].overview_path);
-                    } else {
-                        reject('Directions request failed due to ' + status);
-                    }
-                }
-                );
-            });
-        }
-        function createGPX(route, time, steps) {
-            const totalDistance = calculateTotalDistance(route);
-            const stepDistance = totalDistance / steps;
-            const totalDuration = time * 60;
-            const stepDuration = totalDuration / steps;
-
-            let currentTime = new Date();
-            const metadataTime = formatGPXTime(currentTime);
-
-            let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-            gpx += `<gpx version="1.1" creator="Xcode">\n`;
-            gpx += `    <metadata>\n`;
-            gpx += `        <time>${metadataTime}</time>\n`;
-            gpx += `    </metadata>\n`;
-
-            let accumulatedDistance = 0;
-
-            for (let i = 0; i < route.length - 1; i++) {
-                const segmentDistance = google.maps.geometry.spherical.computeDistanceBetween(route[i], route[i + 1]);
-
-                while (accumulatedDistance + stepDistance <= segmentDistance) {
-                    accumulatedDistance += stepDistance;
-                   
-                    const ratio = accumulatedDistance / segmentDistance;
-                   
-                    const interpolatedLat = route[i].lat() + ratio * (route[i + 1].lat() - route[i].lat());
-                    const interpolatedLng = route[i].lng() + ratio * (route[i + 1].lng() - route[i].lng());
-
-                   
-                    currentTime.setSeconds(currentTime.getSeconds() + stepDuration);
-                    const pointTime = formatGPXTime(currentTime);
-
-                   
-                    gpx += `    <wpt lat="${interpolatedLat}" lon="${interpolatedLng}">\n`;
-                    gpx += `        <time>${pointTime}</time>\n`;
-                    gpx += `    </wpt>\n`;
-                }
-               
-                accumulatedDistance -= segmentDistance;
-            }
-
-            gpx += `</gpx>`;
-
-            return gpx;
-        }
-
-        function calculateTotalDistance(route) {
-            let distance = 0;
-            for (let i = 0; i < route.length - 1; i++) {
-                distance += google.maps.geometry.spherical.computeDistanceBetween(route[i], route[i + 1]);
-            }
-            return distance;
-        }
-        function formatGPXTime(date) {
-            return date.toISOString().split('.')[0] + 'Z';
-        }
-
-        function downloadGPX(gpxData) {
-            const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
-            const url = URL.createObjectURL(blob);
-            const link = document.getElementById('downloadLink');
-            link.href = url;
-            link.style.display = 'block';
-        }
-
-        function initializeMap(startCoords, endCoords) {
-            const center = {
-                lat: (startCoords.lat() + endCoords.lat()) / 2,
-                lng: (startCoords.lng() + endCoords.lng()) / 2
-            };
-
-            map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 10,
-                center: center
-            });
-        }
-
-        function displayRouteOnMap(route) {
-            const path = route.map(point => ({
-                lat: point.lat(),
-                lng: point.lng()
-            }));
-
-            const routeLine = new google.maps.Polyline({
-                path: path,
-                geodesic: true,
-                strokeColor: '#FF0000',
-                strokeOpacity: 1.0,
-                strokeWeight: 4
-            });
-
-            routeLine.setMap(map);
-        }
-    </script>
 </body>
 
 </html>
