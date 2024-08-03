@@ -14,7 +14,6 @@ document.getElementById('gpxForm').addEventListener('submit', (event) => {
 });
 
 async function generateGPX(start, end, time, steps, travelMode, loop) {
-    const directionsService = new google.maps.DirectionsService();
 
     try {
         const startCoords = await geocodeAddress(start);
@@ -107,7 +106,7 @@ function createGPX(route, time, steps, loop) {
 
     // if loop is false, then add one more wpt at the end that has a time that is 1 year after the last point
     if (!loop) {
-        currentTime.setFullYear(currentTime.getFullYear() + 1);
+        currentTime.setFullYear(currentTime.getHours() + 6);
         const pointTime = formatGPXTime(currentTime);
         gpx += `    <wpt lat="${route[route.length - 1].lat()}" lon="${route[route.length - 1].lng()}">\n`;
         gpx += `        <time>${pointTime}</time>\n`;
