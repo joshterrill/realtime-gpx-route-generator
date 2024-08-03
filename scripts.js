@@ -8,11 +8,12 @@ document.getElementById('gpxForm').addEventListener('submit', (event) => {
     const time = document.getElementById('time').value;
     const steps = document.getElementById('steps').value;
     const travelMode = document.getElementById('travel-mode').value;
+    const loop = document.getElementById('loop').checked;
 
-    generateGPX(startLocation, endLocation, time, steps, travelMode);
+    generateGPX(startLocation, endLocation, time, steps, travelMode, loop);
 });
 
-async function generateGPX(start, end, time, steps, travelMode) {
+async function generateGPX(start, end, time, steps, travelMode, loop) {
     const directionsService = new google.maps.DirectionsService();
 
     try {
@@ -23,7 +24,7 @@ async function generateGPX(start, end, time, steps, travelMode) {
 
         const route = await getRoute(startCoords, endCoords, travelMode);
 
-        const gpxData = createGPX(route, time, steps);
+        const gpxData = createGPX(route, time, steps, loop);
 
         downloadGPX(gpxData);
         displayRouteOnMap(route);
@@ -63,7 +64,7 @@ function getRoute(start, end, travelMode) {
         );
     });
 }
-function createGPX(route, time, steps) {
+function createGPX(route, time, steps, loop) {
     const totalDistance = calculateTotalDistance(route);
     const stepDistance = totalDistance / steps;
     const totalDuration = time * 60;
@@ -102,6 +103,15 @@ function createGPX(route, time, steps) {
         }
        
         accumulatedDistance -= segmentDistance;
+    }
+
+    // if loop is false, then add one more wpt at the end that has a time that is 1 year after the last point
+    if (!loop) {
+        currentTime.setFullYear(currentTime.getFullYear() + 1);
+        const pointTime = formatGPXTime(currentTime);
+        gpx += `    <wpt lat="${route[route.length - 1].lat()}" lon="${route[route.length - 1].lng()}">\n`;
+        gpx += `        <time>${pointTime}</time>\n`;
+        gpx += `    </wpt>\n`;
     }
 
     gpx += `</gpx>`;
