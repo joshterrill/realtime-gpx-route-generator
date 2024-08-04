@@ -104,9 +104,9 @@ function createGPX(route, time, steps, loop) {
         accumulatedDistance -= segmentDistance;
     }
 
-    // if loop is false, then add one more wpt at the end that has a time that is 1 year after the last point
+    // if loop is false, then add one more wpt at the end that has a time that is 6 hours after the last point
     if (!loop) {
-        currentTime.setFullYear(currentTime.getHours() + 6);
+        currentTime.setHours(currentTime.getHours() + 6);
         const pointTime = formatGPXTime(currentTime);
         gpx += `    <wpt lat="${route[route.length - 1].lat()}" lon="${route[route.length - 1].lng()}">\n`;
         gpx += `        <time>${pointTime}</time>\n`;
